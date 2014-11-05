@@ -1,0 +1,9 @@
+Package: OASIS
+Version: 0.1
+Author: Erin Jonaitis
+Maintainer: Erin Jonaitis <jonaitis@wisc.edu>
+License: NCSA + file LICENSE
+Title: OASIS
+Description: A few useful functions for processing data from OASIS course
+    evaluations.
+URL: https://github.com/emjonaitis/

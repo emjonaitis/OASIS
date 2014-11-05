@@ -1,0 +1,117 @@
+---
+title: ''
+output:
+  word_document:
+    reference_docx: "template.docx"
+date: ''
+---
+
+
+
+```{r, echo=FALSE, results='asis', warning=FALSE, message=FALSE, include=FALSE}
+############################################################################################################
+# Significantly edited 10/7. Output is really almost perfect! Wow!
+#
+# To-do:
+#    - Improve template issue. Right now template and .Rmd have to be in same place; not great. Asked StackOverflow
+#    - See whether add'l OASIS output can be found that generates Y and Z for document footer. Asked OASIS help team
+#
+############################################################################################################
+
+library(pander)
+panderOptions('keep.line.breaks', TRUE)
+panderOptions('table.split.table', Inf)
+
+library(lubridate)
+library(openxlsx)
+library(OASIS) # Where my custom functions are stored! Let's see if this works!
+
+#############################################
+#### This is where you edit things
+#############################################
+
+# Directory where you have stored your raw data
+# The below code finds the directory containing the sample data. Edit as appropriate for your own data.
+directory <- paste0(subset(data.frame(installed.packages(),stringsAsFactors=FALSE),Package=="OASIS")$LibPath,"/OASIS/data/")
+
+# Filename of your raw data file
+rawfile <- "sample.csv"
+
+# Filename you want for comments file
+commentsfile <- "samplecomments.xlsx"
+
+#############################################
+#### Don't edit anything below here
+#############################################
+
+filename1 <- paste0(directory,rawfile)
+filename2 <- paste0(directory,commentsfile)
+data <- read.csv2(filename1,stringsAsFactors = FALSE)
+# If the file is comma-separated, use read.csv; 
+# if it is semicolon-separated, use read.csv2
+# You will almost never need read.csv2 in daily practice
+
+# First strip out comments
+
+comments <- getComments(data)
+dfs <- comments[2:5]
+names(dfs) <- c("11-Lunch","12-Tastiness","13-Nutrition","14-Tomorrow")
+tc1 <- c("#FF0000","#FFFF00","#00B050","#7030A0")
+hs1 <- createStyle(textDecoration=c("bold","underline"))
+hs <- c(hs1,hs1,hs1,hs1)
+
+wb <- createWorkbook()
+for (i in 1:length(dfs)) {
+  addWorksheet(wb,sheetName=names(dfs)[i],tabColour=tc1[i])
+  writeData(wb,i,data.frame(dfs[[i]]),headerStyle=hs1)
+}
+saveWorkbook(wb,filename2,overwrite=FALSE)
+
+# Now work on multiple choice responses
+row <- data.frame(data[which.max(parse_date_time(data$Start.Date,orders=c("ymd","mdy"))),])
+semester <- ifelse(month(parse_date_time(row$Start.Date,orders=c("ymd","mdy")))<=6,"Spring","Fall")
+year <- year(parse_date_time(row$Start.Date,orders=c("ymd","mdy")))
+interimData <- courseEval(data,"md")
+
+printData <- with(interimData, data.frame(QuestionWithNum,
+                                          twoline(N,NOld,"md"),
+                                          twoline(StdDev,StdDevOld,"md"),
+                                          twoline(Mean,MeanOld,"md"),
+                                          pct(Resp1,"md"), 
+                                          pct(Resp2,"md"), 
+                                          pct(Resp3,"md"), 
+                                          pct(Resp4,"md"), 
+                                          pct(Resp5,"md"), 
+                                          pct(Resp6,"md"),
+                                          pct(Resp7,"md")))
+colnames(printData) <- c("Standard course evaluation question","N","SD","Mean","**Strongly\\\nAgree\\\n**1","2","3","**Neutral\\\n**4","5","6","**Strongly\\\nDisagree\\\n**7")
+
+# Below we start formatting the output document for the multiple choice Qs
+```
+# Acme University
+## Standard Course Evaluation Questions
+## `r paste0(row$Course.ID," - ",row$Course)`  
+## `r paste0(semester,' ',year,'  \\\n')`
+
+*Last year's ratings in italics on line 2; \* = signif diff at p<.05*  
+```{r, echo=FALSE, results="asis"}
+pandoc.table(printData, style="multiline",justify=c("left",rep("center",10)))
+cat('  \\\n')
+```
+**`r paste0(max(interimData$N))` of Y (Z%) evaluation forms have been submitted.**
+
+### Comments:
+  
+  
+### 11) What did you have for lunch today?
+  
+  
+### 12) Was it tasty?
+  
+  
+### 13) Was it nutritious? 
+  
+  
+### 14) What will you order tomorrow?
+ 
+
